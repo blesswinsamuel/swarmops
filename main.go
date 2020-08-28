@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -12,6 +13,7 @@ var (
 	gitBranch = flag.String("git-branch", "master", "SSH git branch")
 	keysDir   = flag.String("keys-dir", "", "Key persistense directory")
 	repoDir   = flag.String("repo-dir", "", "Repo clone directory")
+	stackFile = flag.String("stack-file", "stack.yaml", "Stack file")
 	port      = flag.String("port", "8080", "Server port")
 )
 var mx sync.Mutex
@@ -40,20 +42,20 @@ func doSync() error {
 	mx.Lock()
 	defer mx.Unlock()
 	log.Println("Sync started")
-	changed, err := gitSync()
+	_, err := gitSync()
 	if err != nil {
-		return err
+		return fmt.Errorf("gitSync: %w", err)
 	}
-	if changed {
-		cfg, err := parseConfig()
-		if err != nil {
-			return err
-		}
-		err = runDeploy(cfg)
-		if err != nil {
-			return err
-		}
+	// if changed {
+	cfg, err := parseConfig()
+	if err != nil {
+		return fmt.Errorf("parseConfig: %w", err)
 	}
+	err = runDeploy(cfg)
+	if err != nil {
+		return fmt.Errorf("runDeploy: %w", err)
+	}
+	// }
 	log.Println("Sync completed")
 	return nil
 }

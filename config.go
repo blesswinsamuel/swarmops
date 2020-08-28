@@ -17,7 +17,7 @@ type StackConfig struct {
 
 func parseConfig() (*StackConfig, error) {
 	var stackConfig StackConfig
-	data, err := ioutil.ReadFile(path.Join(*repoDir, "stack.yml"))
+	data, err := ioutil.ReadFile(path.Join(*repoDir, *stackFile))
 	if err != nil {
 		return nil, err
 	}
