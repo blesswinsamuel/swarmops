@@ -11,9 +11,11 @@ services:
       - --keys-dir=/data/keys
       - --repo-dir=/data/repo
       - --stack-file=stack.yaml
+      - --sync-interval=5m
       - --port=8080
     volumes:
       - swarmops_keys:/data/keys
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   swarmops_keys:

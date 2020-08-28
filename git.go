@@ -63,6 +63,7 @@ func gitCloneOrGetRepo() (*git.Repository, error) {
 		SingleBranch:  true,
 		ReferenceName: plumbing.NewBranchReferenceName(*gitBranch),
 		Tags:          git.NoTags,
+		NoCheckout:    true,
 	})
 	if err != nil {
 		return nil, err
