@@ -1,5 +1,5 @@
 # build stage
-FROM --platform=$BUILDPLATFORM golang:1.15-buster AS build-env
+FROM golang:1.15-buster AS build-env
 
 ADD . /src
 ENV CGO_ENABLED=0
@@ -7,7 +7,7 @@ WORKDIR /src
 
 ARG TARGETOS
 ARG TARGETARCH
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o swarmoperator
+RUN go build -o swarmoperator
 
 # final stage
 FROM alpine

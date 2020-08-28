@@ -44,5 +44,5 @@ jobs:
           echo IMAGE_ID=$IMAGE_ID
           echo VERSION=$VERSION
 
-          docker buildx create --use --name=cross
-          docker buildx build --platform linux/amd64 --push --file Dockerfile --tag $IMAGE_ID:$VERSION .
+          docker build -t $IMAGE_ID:$VERSION .
+          docker push $IMAGE_ID:$VERSION

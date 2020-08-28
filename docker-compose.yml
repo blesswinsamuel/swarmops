@@ -1,0 +1,19 @@
+version: "3.7"
+
+services:
+  swarmops:
+    container_name: swarmops
+    image: blesswinsamuel/swarm-operator:latest
+    build: .
+    command:
+      - --git-repo=git@github.com:blesswinsamuel/swarm-stack-example.git
+      - --git-branch=master
+      - --keys-dir=/data/keys
+      - --repo-dir=/data/repo
+      - --stack-file=stack.yaml
+      - --port=8080
+    volumes:
+      - swarmops_keys:/data/keys
+
+volumes:
+  swarmops_keys:
