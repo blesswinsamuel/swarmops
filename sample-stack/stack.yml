@@ -1,6 +1,0 @@
-stack_name: test_stack
-compose_files:
-  - dev/app.yml
-with_registry_auth: true
-prune: true
-resolve_image: always
