@@ -30,7 +30,7 @@ func gitAuth() (*ssh.PublicKeys, error) {
 }
 
 func gitCloneOrGetRepo() (*git.Repository, error) {
-	if _, err := os.Stat(*repoDir); !os.IsNotExist(err) {
+	if _, err := os.Stat(path.Join(*repoDir, ".git")); !os.IsNotExist(err) {
 		// Already exists
 		repo, err := git.PlainOpen(*repoDir)
 		if err != nil {
@@ -63,7 +63,7 @@ func gitCloneOrGetRepo() (*git.Repository, error) {
 func gitSync() (bool, error) {
 	repo, err := gitCloneOrGetRepo()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("gitCloneOrGetRepo: %w", err)
 	}
 	remote, err := repo.Remote("origin")
 	if err != nil {
