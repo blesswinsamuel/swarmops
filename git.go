@@ -13,18 +13,6 @@ import (
 )
 
 func publicKey(privateKeyPath string) (*ssh.PublicKeys, error) {
-	if _, err := os.Stat(privateKeyPath); os.IsNotExist(err) {
-		// Key doesn't exist - create new one
-		err := generateRsaKeyPairs(*keysDir)
-		if err != nil {
-			return nil, err
-		}
-		pubKey, err := getPublicKey()
-		if err != nil {
-			return nil, err
-		}
-		log.Printf("Created new key pair:\n%s", pubKey)
-	}
 	var publicKey *ssh.PublicKeys
 	sshKey, err := ioutil.ReadFile(privateKeyPath)
 	if err != nil {
@@ -38,7 +26,7 @@ func publicKey(privateKeyPath string) (*ssh.PublicKeys, error) {
 }
 
 func gitAuth() (*ssh.PublicKeys, error) {
-	return publicKey(path.Join(*keysDir, privateKeyFile))
+	return publicKey(path.Clean(*privateKeyFile))
 }
 
 func gitCloneOrGetRepo() (*git.Repository, error) {
@@ -77,31 +65,48 @@ func gitSync() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	wt, err := repo.Worktree()
+	remote, err := repo.Remote("origin")
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("repo.Remote: %w", err)
 	}
 	auth, err := gitAuth()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("gitAuth: %w", err)
+	}
+	log.Println("Doing git fetch")
+	err = remote.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Auth:       auth,
+		Depth:      1,
+		Force:      true,
+		Progress:   os.Stdout,
+		Tags:       git.NoTags,
+	})
+	if err != git.NoErrAlreadyUpToDate && err != nil {
+		return false, fmt.Errorf("remote.Fetch: %w", err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return false, fmt.Errorf("repo.Worktree: %w", err)
 	}
 	initialHead, err := repo.Head()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("repo.Head: %w", err)
 	}
-	log.Println("Doing git pull")
-	err = wt.Pull(&git.PullOptions{
-		RemoteName:    "origin",
-		Auth:          auth,
-		Progress:      os.Stdout,
-		Depth:         1,
-		SingleBranch:  true,
-		Force:         true,
-		ReferenceName: plumbing.NewBranchReferenceName(*gitBranch),
+	remoteRef, err := repo.Reference(plumbing.NewRemoteReferenceName("origin", *gitBranch), true)
+	if err != nil {
+		return false, fmt.Errorf("repo.Reference: %w", err)
+	}
+	err = wt.Reset(&git.ResetOptions{
+		Commit: remoteRef.Hash(),
+		Mode:   git.HardReset,
 	})
+	if err != nil {
+		return false, fmt.Errorf("wt.Reset: %w", err)
+	}
 	newHead, err := repo.Head()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("repo.Head: %w", err)
 	}
 	return *initialHead != *newHead, nil
 }

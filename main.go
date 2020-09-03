@@ -13,15 +13,15 @@ import (
 )
 
 var (
-	gitRepo      = flag.String("git-repo", "", "SSH git clone repo URL")
-	gitBranch    = flag.String("git-branch", "master", "SSH git branch")
-	keysDir      = flag.String("keys-dir", "", "Key persistense directory")
-	repoDir      = flag.String("repo-dir", "", "Repo clone directory")
-	stackFile    = flag.String("stack-file", "stack.yaml", "Stack file")
-	syncInterval = flag.Duration("sync-interval", 5*time.Minute, "Sync Interval")
-	port         = flag.String("port", "8080", "Server port")
+	gitRepo        = flag.String("git-repo", "", "SSH git clone repo URL")
+	gitBranch      = flag.String("git-branch", "master", "SSH git branch")
+	privateKeyFile = flag.String("private-key-file", "", "Key persistense directory")
+	repoDir        = flag.String("repo-dir", "", "Repo clone directory")
+	stackFile      = flag.String("stack-file", "stack.yaml", "Stack file")
+	syncInterval   = flag.Duration("sync-interval", 5*time.Minute, "Sync Interval")
+	port           = flag.String("port", "8080", "Server port")
 )
-var mx sync.Mutex
+var mu sync.Mutex
 
 func main() {
 	flag.Parse()
@@ -32,23 +32,25 @@ func main() {
 	if *gitBranch == "" {
 		log.Fatalln("--git-branch should not be empty")
 	}
-
-	ticker := time.NewTicker(*syncInterval)
+	log.Printf("sync interval: %v", *syncInterval)
 	quit := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := doSync()
-				if err != nil {
-					log.Printf("Initial sync failed: %v", err)
+	if *syncInterval > 0 {
+		ticker := time.NewTicker(*syncInterval)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					err := doSync()
+					if err != nil {
+						log.Printf("timed sync failed: %v", err)
+					}
+				case <-quit:
+					ticker.Stop()
+					return
 				}
-			case <-quit:
-				ticker.Stop()
-				return
 			}
-		}
-	}()
+		}()
+	}
 	h := httpHandler()
 	server := &http.Server{Addr: ":" + *port, Handler: h}
 
@@ -75,8 +77,8 @@ func main() {
 }
 
 func doSync() error {
-	mx.Lock()
-	defer mx.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
 	log.Println("Sync started")
 	_, err := gitSync()
 	if err != nil {

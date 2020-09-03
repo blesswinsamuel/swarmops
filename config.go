@@ -8,11 +8,15 @@ import (
 )
 
 type StackConfig struct {
-	StackName        string   `yaml:"stack_name"`
-	ComposeFiles     []string `yaml:"compose_files"`
-	ResolveImage     string   `yaml:"resolve_image"`
-	WithRegistryAuth bool     `yaml:"with_registry_auth"`
-	Prune            bool     `yaml:"prune"`
+	ResolveImage     string  `yaml:"resolve_image"`
+	WithRegistryAuth bool    `yaml:"with_registry_auth"`
+	Prune            bool    `yaml:"prune"`
+	Stacks           []Stack `yaml:"stacks"`
+}
+type Stack struct {
+	StackName    string            `yaml:"stack_name"`
+	ComposeFiles []string          `yaml:"compose_files"`
+	Environment  map[string]string `yaml:"environment"`
 }
 
 func parseConfig() (*StackConfig, error) {
@@ -25,8 +29,10 @@ func parseConfig() (*StackConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, f := range stackConfig.ComposeFiles {
-		stackConfig.ComposeFiles[i] = path.Join(*repoDir, f)
+	for _, stack := range stackConfig.Stacks {
+		for i, f := range stack.ComposeFiles {
+			stack.ComposeFiles[i] = path.Join(*repoDir, f)
+		}
 	}
 	return &stackConfig, nil
 }

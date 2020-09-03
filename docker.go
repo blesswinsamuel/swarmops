@@ -9,10 +9,12 @@ import (
 	"strings"
 )
 
-func execDockerCommand(args ...string) error {
+func execDockerCommand(env map[string]string, args ...string) error {
 	log.Printf("Running docker %v", strings.Join(args, " "))
 	cmd := exec.Command("docker", args...)
-
+	for k, v := range env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 	cmd.Start()
@@ -27,23 +29,34 @@ func execDockerCommand(args ...string) error {
 }
 
 func runDeploy(cfg *StackConfig) error {
-	args := []string{"stack", "deploy"}
-	for _, f := range cfg.ComposeFiles {
-		args = append(args, "--compose-file", f)
+	for _, stack := range cfg.Stacks {
+		args := []string{"stack", "deploy"}
+		for _, f := range stack.ComposeFiles {
+			args = append(args, "--compose-file", f)
+		}
+		if cfg.Prune {
+			args = append(args, "--prune")
+		}
+		if cfg.WithRegistryAuth {
+			args = append(args, "--with-registry-auth")
+		}
+		args = append(args, "--resolve-image", cfg.ResolveImage)
+		args = append(args, stack.StackName)
+
+		if err := execDockerCommand(stack.Environment, args...); err != nil {
+			return fmt.Errorf("execDockerCommand: %w", err)
+		}
 	}
-	if cfg.Prune {
-		args = append(args, "--prune")
-	}
-	if cfg.WithRegistryAuth {
-		args = append(args, "--with-registry-auth")
-	}
-	args = append(args, "--resolve-image", cfg.ResolveImage)
-	args = append(args, cfg.StackName)
-	return execDockerCommand(args...)
+	return nil
 }
 
 func runRemove(cfg *StackConfig) error {
-	args := []string{"stack", "remove"}
-	args = append(args, cfg.StackName)
-	return execDockerCommand(args...)
+	for _, stack := range cfg.Stacks {
+		args := []string{"stack", "remove"}
+		args = append(args, stack.StackName)
+		if err := execDockerCommand(nil, args...); err != nil {
+			return fmt.Errorf("execDockerCommand: %w", err)
+		}
+	}
+	return nil
 }
