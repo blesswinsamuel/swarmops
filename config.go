@@ -19,9 +19,9 @@ type Stack struct {
 	Environment  map[string]string `yaml:"environment"`
 }
 
-func parseConfig() (*StackConfig, error) {
+func parseConfig(repoDir, stackFile string) (*StackConfig, error) {
 	var stackConfig StackConfig
-	data, err := ioutil.ReadFile(path.Join(*repoDir, *stackFile))
+	data, err := ioutil.ReadFile(path.Join(repoDir, stackFile))
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func parseConfig() (*StackConfig, error) {
 	}
 	for _, stack := range stackConfig.Stacks {
 		for i, f := range stack.ComposeFiles {
-			stack.ComposeFiles[i] = path.Join(*repoDir, f)
+			stack.ComposeFiles[i] = path.Join(repoDir, f)
 		}
 	}
 	return &stackConfig, nil

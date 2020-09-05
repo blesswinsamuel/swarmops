@@ -5,16 +5,12 @@
 ## Getting started
 
 ```bash
-swarm_operator start --git-repo git@github.com:blesswinsamuel/swarm-operator-example.git --private-key-file ~/.ssh/id_rsa --repo-dir /tmp/swarm-operator-repo
-```
-
-At startup, Swarm Operator generates a SSH key and logs the public key. Find the SSH public key by running:
-
-```bash
-swarm_operator getkey
+swarm_operator --git-repo git@github.com:blesswinsamuel/swarm-stack-example.git --private-key-file ~/.ssh/id_rsa --repo-dir /tmp/swarm-operator-repo
 ```
 
 ## Sync swarm
+
+(not implemented)
 
 ```bash
 swarm_operator sync

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 
@@ -25,88 +24,124 @@ func publicKey(privateKeyPath string) (*ssh.PublicKeys, error) {
 	return publicKey, err
 }
 
-func gitAuth() (*ssh.PublicKeys, error) {
-	return publicKey(path.Clean(*privateKeyFile))
+type Git struct {
+	keys   *ssh.PublicKeys
+	repo   *git.Repository
+	wt     *git.Worktree
+	branch string
 }
 
-func gitCloneOrGetRepo() (*git.Repository, error) {
-	if _, err := os.Stat(path.Join(*repoDir, ".git")); !os.IsNotExist(err) {
+func NewGit(repoUrl, branch, repoDir, privateKeyFile string) (*Git, error) {
+	keys, err := publicKey(path.Clean(privateKeyFile))
+	if err != nil {
+		return nil, fmt.Errorf("gitAuth: %w", err)
+	}
+	repo, err := gitCloneOrGetRepo(repoUrl, branch, repoDir, keys)
+	if err != nil {
+		return nil, fmt.Errorf("gitCloneOrGetRepo: %w", err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("repo.Worktree: %w", err)
+	}
+	return &Git{
+		keys:   keys,
+		repo:   repo,
+		wt:     wt,
+		branch: branch,
+	}, nil
+}
+
+func gitCloneOrGetRepo(gitRepo, gitBranch, repoDir string, keys *ssh.PublicKeys) (*git.Repository, error) {
+	if _, err := os.Stat(path.Join(repoDir, ".git")); !os.IsNotExist(err) {
 		// Already exists
-		repo, err := git.PlainOpen(*repoDir)
+		repo, err := git.PlainOpen(repoDir)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("git.PlainOpen: %w", err)
 		}
 		return repo, nil
 	}
-	auth, err := gitAuth()
-	if err != nil {
-		return nil, err
-	}
-	log.Println("Cloning git repo")
-	repo, err := git.PlainClone(*repoDir, false, &git.CloneOptions{
-		URL:           *gitRepo,
-		Auth:          auth,
-		Progress:      os.Stdout,
-		Depth:         1,
+	log.Infoln("Cloning git repo")
+	repo, err := git.PlainClone(repoDir, false, &git.CloneOptions{
+		URL:      gitRepo,
+		Auth:     keys,
+		Progress: os.Stdout,
+		// Depth:         1,
 		SingleBranch:  true,
-		ReferenceName: plumbing.NewBranchReferenceName(*gitBranch),
+		ReferenceName: plumbing.NewBranchReferenceName(gitBranch),
 		Tags:          git.NoTags,
 		NoCheckout:    true,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("git.PlainClone: %w", err)
 	}
 	return repo, nil
 }
 
 // gitSync returns true if any changes were found
-func gitSync() (bool, error) {
-	repo, err := gitCloneOrGetRepo()
+func (g *Git) gitSync() (bool, error) {
+	remoteRef, err := g.gitFetch()
 	if err != nil {
-		return false, fmt.Errorf("gitCloneOrGetRepo: %w", err)
+		return false, fmt.Errorf("g.gitFetch: %w", err)
 	}
-	remote, err := repo.Remote("origin")
+	outOfSync, err := g.gitIsOutOfSync(remoteRef)
 	if err != nil {
-		return false, fmt.Errorf("repo.Remote: %w", err)
+		return false, fmt.Errorf("g.gitFetch: %w", err)
 	}
-	auth, err := gitAuth()
+	if !outOfSync {
+		return false, nil
+	}
+	// repo out of sync
+	err = g.gitReset(remoteRef.Hash())
 	if err != nil {
-		return false, fmt.Errorf("gitAuth: %w", err)
+		return false, fmt.Errorf("g.gitReset: %w", err)
 	}
-	log.Println("Doing git fetch")
+	return true, nil
+}
+
+// gitFetch returns does git fetch and returns new remote ref
+func (g *Git) gitFetch() (*plumbing.Reference, error) {
+	remote, err := g.repo.Remote("origin")
+	if err != nil {
+		return nil, fmt.Errorf("repo.Remote: %w", err)
+	}
+	log.Infoln("Doing git fetch")
 	err = remote.Fetch(&git.FetchOptions{
 		RemoteName: "origin",
-		Auth:       auth,
-		Depth:      1,
+		Auth:       g.keys,
 		Force:      true,
 		Progress:   os.Stdout,
 		Tags:       git.NoTags,
+		// Depth:      1,
 	})
 	if err != git.NoErrAlreadyUpToDate && err != nil {
-		return false, fmt.Errorf("remote.Fetch: %w", err)
+		return nil, fmt.Errorf("remote.Fetch: %w", err)
 	}
-	wt, err := repo.Worktree()
+	remoteRef, err := g.repo.Reference(plumbing.NewRemoteReferenceName("origin", g.branch), true)
 	if err != nil {
-		return false, fmt.Errorf("repo.Worktree: %w", err)
+		return nil, fmt.Errorf("repo.Reference: %w", err)
 	}
-	initialHead, err := repo.Head()
+	return remoteRef, nil
+}
+
+// gitIsOutOfSync returns true if any changes were found
+func (g *Git) gitIsOutOfSync(remoteRef *plumbing.Reference) (bool, error) {
+	headRef, err := g.repo.Head()
 	if err != nil {
 		return false, fmt.Errorf("repo.Head: %w", err)
 	}
-	remoteRef, err := repo.Reference(plumbing.NewRemoteReferenceName("origin", *gitBranch), true)
-	if err != nil {
-		return false, fmt.Errorf("repo.Reference: %w", err)
-	}
-	err = wt.Reset(&git.ResetOptions{
-		Commit: remoteRef.Hash(),
+	return headRef.Hash() != remoteRef.Hash(), nil
+}
+
+// gitReset returns true if any changes were found
+func (g *Git) gitReset(hash plumbing.Hash) error {
+	log.Infoln("Doing git reset")
+	err := g.wt.Reset(&git.ResetOptions{
+		Commit: hash,
 		Mode:   git.HardReset,
 	})
 	if err != nil {
-		return false, fmt.Errorf("wt.Reset: %w", err)
+		return fmt.Errorf("wt.Reset: %w", err)
 	}
-	newHead, err := repo.Head()
-	if err != nil {
-		return false, fmt.Errorf("repo.Head: %w", err)
-	}
-	return *initialHead != *newHead, nil
+	return nil
 }

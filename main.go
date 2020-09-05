@@ -4,27 +4,40 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/google/logger"
 )
 
-var (
-	gitRepo        = flag.String("git-repo", "", "SSH git clone repo URL")
-	gitBranch      = flag.String("git-branch", "master", "SSH git branch")
-	privateKeyFile = flag.String("private-key-file", "", "Key persistense directory")
-	repoDir        = flag.String("repo-dir", "", "Repo clone directory")
-	stackFile      = flag.String("stack-file", "stack.yaml", "Stack file")
-	syncInterval   = flag.Duration("sync-interval", 5*time.Minute, "Sync Interval")
-	port           = flag.String("port", "8080", "Server port")
-)
-var mu sync.Mutex
+var log *logger.Logger
+
+type server struct {
+	git       *Git
+	docker    *Docker
+	mu        sync.Mutex
+	baseDir   string
+	stackFile string
+}
 
 func main() {
+	var (
+		repoDir        = flag.String("repo-dir", "", "Repo clone directory")
+		privateKeyFile = flag.String("private-key-file", "", "Key persistense directory")
+		gitRepo        = flag.String("git-repo", "", "SSH git clone repo URL")
+		gitBranch      = flag.String("git-branch", "master", "SSH git branch")
+		stackFile      = flag.String("stack-file", "stack.yaml", "Stack file")
+		syncInterval   = flag.Duration("sync-interval", 5*time.Minute, "Sync Interval")
+		port           = flag.String("port", "8080", "Server port")
+	)
 	flag.Parse()
+
+	log = logger.Init("LoggerExample", true, false, ioutil.Discard)
+	defer log.Close()
 
 	if *gitRepo == "" {
 		log.Fatalln("--git-repo should not be empty")
@@ -32,7 +45,22 @@ func main() {
 	if *gitBranch == "" {
 		log.Fatalln("--git-branch should not be empty")
 	}
-	log.Printf("sync interval: %v", *syncInterval)
+
+	git, err := NewGit(*gitRepo, *gitBranch, *repoDir, *privateKeyFile)
+	if err != nil {
+		log.Fatalf("NewGit: %v", err)
+	}
+
+	docker := NewDocker()
+
+	server := &server{
+		git:       git,
+		docker:    docker,
+		baseDir:   *repoDir,
+		stackFile: *stackFile,
+	}
+
+	log.Infof("sync interval: %v", *syncInterval)
 	quit := make(chan struct{})
 	if *syncInterval > 0 {
 		ticker := time.NewTicker(*syncInterval)
@@ -40,9 +68,9 @@ func main() {
 			for {
 				select {
 				case <-ticker.C:
-					err := doSync()
+					err := server.doSync(false)
 					if err != nil {
-						log.Printf("timed sync failed: %v", err)
+						log.Infof("timed sync failed: %v", err)
 					}
 				case <-quit:
 					ticker.Stop()
@@ -51,13 +79,13 @@ func main() {
 			}
 		}()
 	}
-	h := httpHandler()
-	server := &http.Server{Addr: ":" + *port, Handler: h}
+	h := server.httpHandler()
+	s := &http.Server{Addr: ":" + *port, Handler: h}
 
 	go func() {
-		log.Printf("Server started at port %s", *port)
-		if err := server.ListenAndServe(); err != nil {
-			log.Printf("Server ListenAndServe failed: %v", err)
+		log.Infof("Server started at port %s", *port)
+		if err := s.ListenAndServe(); err != nil {
+			log.Infof("Server ListenAndServe failed: %v", err)
 		}
 	}()
 
@@ -71,29 +99,29 @@ func main() {
 	close(quit)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server Shutdown failed: %v", err)
+	if err := s.Shutdown(ctx); err != nil {
+		log.Infof("Server Shutdown failed: %v", err)
 	}
 }
 
-func doSync() error {
-	mu.Lock()
-	defer mu.Unlock()
-	log.Println("Sync started")
-	_, err := gitSync()
+func (s *server) doSync(force bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	log.Infoln("Sync started")
+	outOfSync, err := s.git.gitSync()
 	if err != nil {
 		return fmt.Errorf("gitSync: %w", err)
 	}
-	// if changed {
-	cfg, err := parseConfig()
-	if err != nil {
-		return fmt.Errorf("parseConfig: %w", err)
+	if outOfSync || force {
+		cfg, err := parseConfig(s.baseDir, s.stackFile)
+		if err != nil {
+			return fmt.Errorf("parseConfig: %w", err)
+		}
+		err = s.docker.runDeploy(cfg)
+		if err != nil {
+			return fmt.Errorf("runDeploy: %w", err)
+		}
 	}
-	err = runDeploy(cfg)
-	if err != nil {
-		return fmt.Errorf("runDeploy: %w", err)
-	}
-	// }
-	log.Println("Sync completed")
+	log.Infoln("Sync completed")
 	return nil
 }

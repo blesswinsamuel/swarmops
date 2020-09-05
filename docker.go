@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"strings"
 )
 
 func execDockerCommand(env map[string]string, args ...string) error {
-	log.Printf("Running docker %v", strings.Join(args, " "))
+	log.Infof("Running docker %v", strings.Join(args, " "))
 	cmd := exec.Command("docker", args...)
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
@@ -28,7 +27,14 @@ func execDockerCommand(env map[string]string, args ...string) error {
 	return cmd.Wait()
 }
 
-func runDeploy(cfg *StackConfig) error {
+type Docker struct {
+}
+
+func NewDocker() *Docker {
+	return &Docker{}
+}
+
+func (d *Docker) runDeploy(cfg *StackConfig) error {
 	for _, stack := range cfg.Stacks {
 		args := []string{"stack", "deploy"}
 		for _, f := range stack.ComposeFiles {
@@ -50,7 +56,7 @@ func runDeploy(cfg *StackConfig) error {
 	return nil
 }
 
-func runRemove(cfg *StackConfig) error {
+func (d *Docker) runRemove(cfg *StackConfig) error {
 	for _, stack := range cfg.Stacks {
 		args := []string{"stack", "remove"}
 		args = append(args, stack.StackName)
