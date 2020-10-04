@@ -5,7 +5,14 @@
 ## Getting started
 
 ```bash
-swarm_operator --git-repo git@github.com:blesswinsamuel/swarm-stack-example.git --private-key-file ~/.ssh/id_rsa --repo-dir /tmp/swarm-operator-repo
+docker_swarm_gitops \
+    --git-repo git@github.com:blesswinsamuel/docker-swarm-gitops-stack-example.git \
+    --git-branch master \
+    --private-key-file ~/.ssh/id_rsa \
+    --repo-dir /tmp/swarm-operator-repo \
+    --stack-file stack.dev.yaml \
+    --sync-interval 1m \
+    --port 8080
 ```
 
 ## Sync swarm

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,7 +11,10 @@ import (
 
 func (s *server) httpHandler() http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/sync", s.syncHandler)
+	r.HandleFunc("/api/sync", s.syncHandler)
+	r.HandleFunc("/api/docker/stacks", s.dockerStackListHandler)
+	r.HandleFunc("/api/docker/services", s.dockerServiceListHandler)
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./ui/")))
 	return r
 }
 
@@ -37,4 +41,43 @@ func (s *server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Success")
+}
+
+func (s *server) dockerStackListHandler(w http.ResponseWriter, r *http.Request) {
+	stacks, err := NewDockerStackCmd().ls()
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error")
+		return
+	}
+	err = json.NewEncoder(w).Encode(stacks)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error")
+		return
+	}
+	// w.WriteHeader(http.StatusOK)
+	// w.Header().Set("Content-Type", "application/json")
+}
+
+func (s *server) dockerServiceListHandler(w http.ResponseWriter, r *http.Request) {
+	stackName := r.URL.Query().Get("stack")
+	stacks, err := NewDockerStackCmd().services(stackName)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error")
+		return
+	}
+	err = json.NewEncoder(w).Encode(stacks)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error")
+		return
+	}
+	// w.WriteHeader(http.StatusOK)
+	// w.Header().Set("Content-Type", "application/json")
 }

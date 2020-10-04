@@ -18,7 +18,7 @@ var log *logger.Logger
 
 type server struct {
 	git       *Git
-	docker    *Docker
+	docker    *DockerStackCmd
 	mu        sync.Mutex
 	baseDir   string
 	stackFile string
@@ -51,7 +51,7 @@ func main() {
 		log.Fatalf("NewGit: %v", err)
 	}
 
-	docker := NewDocker()
+	docker := NewDockerStackCmd()
 
 	server := &server{
 		git:       git,
@@ -63,28 +63,14 @@ func main() {
 	log.Infof("sync interval: %v", *syncInterval)
 	quit := make(chan struct{})
 	if *syncInterval > 0 {
-		ticker := time.NewTicker(*syncInterval)
-		go func() {
-			for {
-				select {
-				case <-ticker.C:
-					err := server.doSync(false)
-					if err != nil {
-						log.Infof("timed sync failed: %v", err)
-					}
-				case <-quit:
-					ticker.Stop()
-					return
-				}
-			}
-		}()
+		go server.backgroundSync(*syncInterval, quit)
 	}
 	h := server.httpHandler()
 	s := &http.Server{Addr: ":" + *port, Handler: h}
 
 	go func() {
 		log.Infof("Server started at port %s", *port)
-		if err := s.ListenAndServe(); err != nil {
+		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Infof("Server ListenAndServe failed: %v", err)
 		}
 	}()
@@ -104,6 +90,22 @@ func main() {
 	}
 }
 
+func (s *server) backgroundSync(syncInterval time.Duration, quit <-chan struct{}) {
+	ticker := time.NewTicker(syncInterval)
+	for {
+		select {
+		case <-ticker.C:
+			err := s.doSync(false)
+			if err != nil {
+				log.Infof("timed sync failed: %v", err)
+			}
+		case <-quit:
+			ticker.Stop()
+			return
+		}
+	}
+}
+
 func (s *server) doSync(force bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -117,7 +119,7 @@ func (s *server) doSync(force bool) error {
 		if err != nil {
 			return fmt.Errorf("parseConfig: %w", err)
 		}
-		err = s.docker.runDeploy(cfg)
+		err = s.docker.deploy(cfg)
 		if err != nil {
 			return fmt.Errorf("runDeploy: %w", err)
 		}

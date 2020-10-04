@@ -53,27 +53,27 @@ func NewGit(repoUrl, branch, repoDir, privateKeyFile string) (*Git, error) {
 }
 
 func gitCloneOrGetRepo(gitRepo, gitBranch, repoDir string, keys *ssh.PublicKeys) (*git.Repository, error) {
-	if _, err := os.Stat(path.Join(repoDir, ".git")); !os.IsNotExist(err) {
-		// Already exists
-		repo, err := git.PlainOpen(repoDir)
-		if err != nil {
-			return nil, fmt.Errorf("git.PlainOpen: %w", err)
-		}
-		return repo, nil
-	}
-	log.Infoln("Cloning git repo")
-	repo, err := git.PlainClone(repoDir, false, &git.CloneOptions{
-		URL:      gitRepo,
-		Auth:     keys,
-		Progress: os.Stdout,
-		// Depth:         1,
-		SingleBranch:  true,
-		ReferenceName: plumbing.NewBranchReferenceName(gitBranch),
-		Tags:          git.NoTags,
-		NoCheckout:    true,
-	})
+	repo, err := git.PlainOpen(repoDir)
 	if err != nil {
-		return nil, fmt.Errorf("git.PlainClone: %w", err)
+		if err == git.ErrRepositoryNotExists {
+			// Repo doesn't exist
+			log.Infoln("Cloning git repo")
+			repo, err := git.PlainClone(repoDir, false, &git.CloneOptions{
+				URL:      gitRepo,
+				Auth:     keys,
+				Progress: os.Stdout,
+				// Depth:         1,
+				SingleBranch:  true,
+				RemoteName:    "origin",
+				ReferenceName: plumbing.NewBranchReferenceName(gitBranch),
+				Tags:          git.NoTags,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("git.PlainClone: %w", err)
+			}
+			return repo, nil
+		}
+		return nil, fmt.Errorf("git.PlainOpen: %w", err)
 	}
 	return repo, nil
 }

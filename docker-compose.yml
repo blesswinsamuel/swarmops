@@ -3,16 +3,18 @@ version: "3.7"
 services:
   swarmops:
     container_name: swarmops
-    image: blesswinsamuel/swarm-operator:latest
+    image: blesswinsamuel/docker-swarm-gitops:latest
     build: .
     command:
-      - --git-repo=git@github.com:blesswinsamuel/swarm-stack-example.git
+      - --git-repo=git@github.com:blesswinsamuel/docker-swarm-gitops-stack-example.git
       - --git-branch=master
       - --private-key-file=/root/.ssh/id_rsa
       - --repo-dir=/data/repo
       - --stack-file=stack.dev.yaml
-      - --sync-interval=5m
+      - --sync-interval=1m
       - --port=8080
+    ports:
+      - "8080:8080"
     volumes:
       - ~/.ssh/:/root/.ssh/
       - /var/run/docker.sock:/var/run/docker.sock
