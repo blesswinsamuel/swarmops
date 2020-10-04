@@ -1,13 +1,16 @@
-package main
+package docker
 
 import (
 	"bufio"
+	"docker_swarm_gitops/internal/config"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func execDockerCommand(env map[string]string, args ...string) error {
@@ -59,7 +62,7 @@ func NewDockerStackCmd() *DockerStackCmd {
 	return &DockerStackCmd{}
 }
 
-func (d *DockerStackCmd) deploy(cfg *StackConfig) error {
+func (d *DockerStackCmd) Deploy(cfg *config.StackConfig) error {
 	for _, stack := range cfg.Stacks {
 		args := []string{"stack", "deploy"}
 		for _, f := range stack.ComposeFiles {
@@ -81,7 +84,7 @@ func (d *DockerStackCmd) deploy(cfg *StackConfig) error {
 	return nil
 }
 
-func (d *DockerStackCmd) remove(cfg *StackConfig) error {
+func (d *DockerStackCmd) Remove(cfg *config.StackConfig) error {
 	for _, stack := range cfg.Stacks {
 		args := []string{"stack", "remove"}
 		args = append(args, stack.StackName)
@@ -119,7 +122,7 @@ type DockerStackPs struct {
 	Ports        string
 }
 
-func (d *DockerStackCmd) services(stackName string) ([]*DockerService, error) {
+func (d *DockerStackCmd) Services(stackName string) ([]*DockerService, error) {
 	args := []string{"stack", "services"}
 	args = append(args, "--format", "{{ json . }}")
 	args = append(args, stackName)
@@ -138,7 +141,7 @@ func (d *DockerStackCmd) services(stackName string) ([]*DockerService, error) {
 	}
 }
 
-func (d *DockerStackCmd) ls() ([]*DockerStack, error) {
+func (d *DockerStackCmd) Ls() ([]*DockerStack, error) {
 	args := []string{"stack", "ls"}
 	args = append(args, "--format", "{{ json . }}")
 	if lines, err := execDockerCommandCaptureOutput(nil, args...); err != nil {

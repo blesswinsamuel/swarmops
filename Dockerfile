@@ -6,7 +6,8 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY internal ./internal
+COPY main.go .
 
 # RUN ssh-keyscan github.com >> known_hosts
 

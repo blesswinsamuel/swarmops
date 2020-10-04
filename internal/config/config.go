@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"io/ioutil"
@@ -19,7 +19,7 @@ type Stack struct {
 	Environment  map[string]string `yaml:"environment"`
 }
 
-func parseConfig(repoDir, stackFile string) (*StackConfig, error) {
+func ParseConfig(repoDir, stackFile string) (*StackConfig, error) {
 	var stackConfig StackConfig
 	data, err := ioutil.ReadFile(path.Join(repoDir, stackFile))
 	if err != nil {

@@ -1,4 +1,4 @@
-package main
+package git
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
+	log "github.com/sirupsen/logrus"
 )
 
 func publicKey(privateKeyPath string) (*ssh.PublicKeys, error) {
@@ -79,7 +80,7 @@ func gitCloneOrGetRepo(gitRepo, gitBranch, repoDir string, keys *ssh.PublicKeys)
 }
 
 // gitSync returns true if any changes were found
-func (g *Git) gitSync() (bool, error) {
+func (g *Git) Sync() (bool, error) {
 	remoteRef, err := g.gitFetch()
 	if err != nil {
 		return false, fmt.Errorf("g.gitFetch: %w", err)

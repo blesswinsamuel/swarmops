@@ -2,27 +2,16 @@ package main
 
 import (
 	"context"
+	"docker_swarm_gitops/internal/git"
+	"docker_swarm_gitops/internal/server"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
-	"github.com/google/logger"
+	log "github.com/sirupsen/logrus"
 )
-
-var log *logger.Logger
-
-type server struct {
-	git       *Git
-	docker    *DockerStackCmd
-	mu        sync.Mutex
-	baseDir   string
-	stackFile string
-}
 
 func main() {
 	var (
@@ -36,9 +25,6 @@ func main() {
 	)
 	flag.Parse()
 
-	log = logger.Init("LoggerExample", true, false, ioutil.Discard)
-	defer log.Close()
-
 	if *gitRepo == "" {
 		log.Fatalln("--git-repo should not be empty")
 	}
@@ -46,26 +32,19 @@ func main() {
 		log.Fatalln("--git-branch should not be empty")
 	}
 
-	git, err := NewGit(*gitRepo, *gitBranch, *repoDir, *privateKeyFile)
+	git, err := git.NewGit(*gitRepo, *gitBranch, *repoDir, *privateKeyFile)
 	if err != nil {
 		log.Fatalf("NewGit: %v", err)
 	}
 
-	docker := NewDockerStackCmd()
-
-	server := &server{
-		git:       git,
-		docker:    docker,
-		baseDir:   *repoDir,
-		stackFile: *stackFile,
-	}
+	server := server.NewServer(git, *repoDir, *stackFile)
 
 	log.Infof("sync interval: %v", *syncInterval)
 	quit := make(chan struct{})
 	if *syncInterval > 0 {
-		go server.backgroundSync(*syncInterval, quit)
+		go server.BackgroundSync(*syncInterval, quit)
 	}
-	h := server.httpHandler()
+	h := server.HttpHandler()
 	s := &http.Server{Addr: ":" + *port, Handler: h}
 
 	go func() {
@@ -88,42 +67,4 @@ func main() {
 	if err := s.Shutdown(ctx); err != nil {
 		log.Infof("Server Shutdown failed: %v", err)
 	}
-}
-
-func (s *server) backgroundSync(syncInterval time.Duration, quit <-chan struct{}) {
-	ticker := time.NewTicker(syncInterval)
-	for {
-		select {
-		case <-ticker.C:
-			err := s.doSync(false)
-			if err != nil {
-				log.Infof("timed sync failed: %v", err)
-			}
-		case <-quit:
-			ticker.Stop()
-			return
-		}
-	}
-}
-
-func (s *server) doSync(force bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	log.Infoln("Sync started")
-	outOfSync, err := s.git.gitSync()
-	if err != nil {
-		return fmt.Errorf("gitSync: %w", err)
-	}
-	if outOfSync || force {
-		cfg, err := parseConfig(s.baseDir, s.stackFile)
-		if err != nil {
-			return fmt.Errorf("parseConfig: %w", err)
-		}
-		err = s.docker.deploy(cfg)
-		if err != nil {
-			return fmt.Errorf("runDeploy: %w", err)
-		}
-	}
-	log.Infoln("Sync completed")
-	return nil
 }
