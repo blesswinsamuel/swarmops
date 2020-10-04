@@ -21,13 +21,16 @@
 </template>
 
 <script>
-import useSWRV from "swrv";
-import fetcher from "../fetcher";
+import useApi from "../useApi";
 
 export default {
   name: "Stacks",
   setup() {
-    const { data, error } = useSWRV("/api/docker/stacks", fetcher);
+    const { data, error } = useApi(
+      () => "/api/docker/stacks",
+      (r) => r.json(),
+      true
+    );
 
     return {
       data,

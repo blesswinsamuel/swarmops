@@ -6,6 +6,10 @@
         <a href="#/stacks" class="btn btn-link">Stacks</a>
         <a href="#/services" class="btn btn-link">Services</a>
       </section>
+      <section class="navbar-section">
+        <SyncButton>Sync</SyncButton>
+        <SyncButton :force="true">Force Sync</SyncButton>
+      </section>
     </header>
 
     <slot></slot>
@@ -13,8 +17,11 @@
 </template>
 
 <script>
+import SyncButton from "./SyncButton.vue";
+
 export default {
   name: "Layout",
+  components: { SyncButton },
 };
 </script>
 

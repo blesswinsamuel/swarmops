@@ -1,5 +1,7 @@
 <template>
-  <button @click="execute()">Sync</button>
+  <button @click="execute()" :class="['btn', 'ml-1', loading && 'loading']">
+    <slot>Sync</slot>
+  </button>
 </template>
 
 <script>
@@ -10,9 +12,9 @@ export default {
   props: {
     force: Boolean,
   },
-  setup() {
+  setup(props) {
     const { execute, data, error, loading } = useApi(
-      () => ({ url: `/api/sync` }),
+      () => `/api/sync` + (props.force ? "?force=true" : ""),
       (r) => r.json()
     );
 

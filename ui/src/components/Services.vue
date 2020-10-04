@@ -27,26 +27,26 @@
 
 <script>
 import { ref } from "vue";
-import useSWRV from "swrv";
 import StacksDropdown from "./StacksDropdown.vue";
-import fetcher from "../fetcher";
+import useApi from "../useApi";
 
 export default {
   name: "Stacks",
   components: { StacksDropdown },
   setup() {
     const selectedStack = ref("");
-    function setSelected(v) {
-      console.log(v);
-      selectedStack.value = v;
-    }
-    const { data, error } = useSWRV(
+    const { execute, data, error } = useApi(
       () =>
         selectedStack.value
           ? `/api/docker/services?stack=${selectedStack.value}`
           : null,
-      fetcher
+      (r) => r.json(),
+      true
     );
+    function setSelected(v) {
+      selectedStack.value = v;
+      execute();
+    }
 
     return {
       data,
