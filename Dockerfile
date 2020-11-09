@@ -37,3 +37,4 @@ COPY --from=build-env /src/docker_swarm_gitops /app/
 COPY --from=ui-build-env /src/dist /app/ui
 
 ENTRYPOINT ["/app/docker_swarm_gitops"]
+CMD ["serve"]
