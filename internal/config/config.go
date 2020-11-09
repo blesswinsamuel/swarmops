@@ -33,6 +33,7 @@ func ParseConfig(repoDir, stackFile string) (*StackConfig, error) {
 		for i, f := range stack.ComposeFiles {
 			stack.ComposeFiles[i] = path.Join(repoDir, f)
 		}
+		stack.Environment["PWD"] = repoDir
 	}
 	return &stackConfig, nil
 }

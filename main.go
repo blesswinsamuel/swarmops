@@ -150,6 +150,11 @@ func NewDeployCommand() *DeployCommand {
 
 	sc.fs.StringVar(&sc.stackFile, "stack-file", "stack.yaml", "Stack file")
 	sc.fs.StringVar(&sc.baseDir, "base-dir", "./", "Base directory")
+	absPath, err := filepath.Abs(sc.baseDir)
+	if err != nil {
+		log.Errorf("failed to resolve path: %s", err)
+	}
+	sc.baseDir = absPath
 
 	return sc
 }
