@@ -1,9 +1,9 @@
 package server
 
 import (
-	"docker_swarm_gitops/internal/config"
-	"docker_swarm_gitops/internal/docker"
-	"docker_swarm_gitops/internal/git"
+	"swarmops/internal/config"
+	"swarmops/internal/docker"
+	"swarmops/internal/git"
 	"encoding/json"
 	"fmt"
 	"net/http"

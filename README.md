@@ -4,9 +4,11 @@
 
 ## Getting started
 
+### Start server
+
 ```bash
-docker_swarm_gitops \
-    --git-repo git@github.com:blesswinsamuel/docker-swarm-gitops-stack-example.git \
+swarmops serve \
+    --git-repo git@github.com:blesswinsamuel/swarmops-stack-example.git \
     --git-branch master \
     --private-key-file ~/.ssh/id_rsa \
     --repo-dir /tmp/swarm-operator-repo \
@@ -15,10 +17,14 @@ docker_swarm_gitops \
     --port 8080
 ```
 
-## Sync swarm
-
-(not implemented)
+### Deploy (one-off command)
 
 ```bash
-swarm_operator sync
+swarmops deploy --stack-file stack.dev.yaml
+```
+
+### Sync swarm
+
+```bash
+curl localhost:8080/api/sync?force=true
 ```

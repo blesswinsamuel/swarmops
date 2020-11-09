@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"docker_swarm_gitops/internal/config"
-	"docker_swarm_gitops/internal/docker"
-	"docker_swarm_gitops/internal/git"
-	"docker_swarm_gitops/internal/server"
 	"errors"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"swarmops/internal/config"
+	"swarmops/internal/docker"
+	"swarmops/internal/git"
+	"swarmops/internal/server"
 	"time"
 
 	log "github.com/sirupsen/logrus"

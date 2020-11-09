@@ -2,13 +2,13 @@ package docker
 
 import (
 	"bufio"
-	"docker_swarm_gitops/internal/config"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
+	"swarmops/internal/config"
 
 	log "github.com/sirupsen/logrus"
 )
