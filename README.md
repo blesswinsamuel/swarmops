@@ -4,6 +4,12 @@
 
 ## Getting started
 
+### Install
+
+```bash
+go get -u github.com/blesswinsamuel/swarmops
+```
+
 ### Start server
 
 ```bash
