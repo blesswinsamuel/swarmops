@@ -42,7 +42,6 @@ func ParseConfig(repoDir, stackFile string) (*StackConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := sha256.New()
 	for _, stack := range stackConfig.Stacks {
 		for i, f := range stack.ComposeFiles {
 			data, err := ioutil.ReadFile(path.Join(repoDir, f))
@@ -60,6 +59,7 @@ func ParseConfig(repoDir, stackFile string) (*StackConfig, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to open config file '%s': %v", configFile, err)
 				}
+				h := sha256.New()
 				if _, err := io.Copy(h, f); err != nil {
 					return nil, fmt.Errorf("failed to hash config file '%s': %v", configFile, err)
 				}
