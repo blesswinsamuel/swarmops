@@ -9,11 +9,12 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"swarmops/internal/config"
-	"swarmops/internal/docker"
-	"swarmops/internal/git"
-	"swarmops/internal/server"
 	"time"
+
+	"github.com/blesswinsamuel/swarmops/internal/config"
+	"github.com/blesswinsamuel/swarmops/internal/docker"
+	"github.com/blesswinsamuel/swarmops/internal/git"
+	"github.com/blesswinsamuel/swarmops/internal/server"
 
 	log "github.com/sirupsen/logrus"
 )

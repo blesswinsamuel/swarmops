@@ -1,15 +1,16 @@
 package server
 
 import (
-	"swarmops/internal/config"
-	"swarmops/internal/docker"
-	"swarmops/internal/git"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/blesswinsamuel/swarmops/internal/config"
+	"github.com/blesswinsamuel/swarmops/internal/docker"
+	"github.com/blesswinsamuel/swarmops/internal/git"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"

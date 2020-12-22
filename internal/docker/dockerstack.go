@@ -8,7 +8,8 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-	"swarmops/internal/config"
+
+	"github.com/blesswinsamuel/swarmops/internal/config"
 
 	log "github.com/sirupsen/logrus"
 )

@@ -1,4 +1,4 @@
-module swarmops
+module github.com/blesswinsamuel/swarmops
 
 go 1.15
 
