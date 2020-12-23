@@ -3,10 +3,10 @@ version: "3.7"
 services:
   swarmops:
     container_name: swarmops
-    image: blesswinsamuel/docker-swarm-gitops:latest
+    image: blesswinsamuel/swarmops:latest
     build: .
     command:
-      - --git-repo=git@github.com:blesswinsamuel/docker-swarm-gitops-stack-example.git
+      - --git-repo=git@github.com:blesswinsamuel/swarmops-stack-example.git
       - --git-branch=master
       - --private-key-file=/root/.ssh/id_rsa
       - --repo-dir=/data/repo
