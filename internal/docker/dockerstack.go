@@ -64,6 +64,7 @@ func NewDockerStackCmd() *DockerStackCmd {
 }
 
 func (d *DockerStackCmd) Deploy(cfg *config.StackConfig) error {
+	log.Info("Starting deploy")
 	for _, stack := range cfg.Stacks {
 		args := []string{"stack", "deploy"}
 		for _, f := range stack.ComposeFiles {
@@ -82,6 +83,7 @@ func (d *DockerStackCmd) Deploy(cfg *config.StackConfig) error {
 			return fmt.Errorf("execDockerCommand: %w", err)
 		}
 	}
+	log.Info("Deploy completed")
 	return nil
 }
 
