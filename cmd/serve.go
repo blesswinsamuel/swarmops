@@ -73,7 +73,7 @@ func ServeExecute() error {
 	go func() {
 		log.Infof("Server started at port %s", c.port)
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Infof("Server ListenAndServe failed: %v", err)
+			log.Fatalf("Server ListenAndServe failed: %v", err)
 		}
 	}()
 
