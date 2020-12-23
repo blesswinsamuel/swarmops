@@ -93,6 +93,7 @@ func (g *Git) Sync() (bool, error) {
 		return false, nil
 	}
 	// repo out of sync
+	log.Infoln("Out of sync. Doing git reset.")
 	err = g.gitReset(remoteRef.Hash())
 	if err != nil {
 		return false, fmt.Errorf("g.gitReset: %w", err)
@@ -106,7 +107,7 @@ func (g *Git) gitFetch() (*plumbing.Reference, error) {
 	if err != nil {
 		return nil, fmt.Errorf("repo.Remote: %w", err)
 	}
-	log.Infoln("Doing git fetch")
+	log.Debug("Doing git fetch")
 	err = remote.Fetch(&git.FetchOptions{
 		RemoteName: "origin",
 		Auth:       g.keys,

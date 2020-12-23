@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,8 +12,21 @@ import (
 	"github.com/blesswinsamuel/swarmops/internal/git"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
+
+var (
+	reconcileDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{Name: "swarmops_reconcile_duration_seconds", Help: "Time taken to receoncile"},
+		[]string{"force"},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(reconcileDuration)
+}
 
 type Server struct {
 	git       *git.Git
@@ -38,9 +50,13 @@ func NewServer(git *git.Git, repoDir string, stackFile string) *Server {
 func (s *Server) HttpHandler() http.Handler {
 	r := mux.NewRouter()
 	r.HandleFunc("/api/sync", s.syncHandler)
-	r.HandleFunc("/api/docker/stacks", s.dockerStackListHandler)
-	r.HandleFunc("/api/docker/services", s.dockerServiceListHandler)
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./ui/")))
+	r.Handle("/metrics", promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{
+			// Opt into OpenMetrics to support exemplars.
+			EnableOpenMetrics: true,
+		},
+	))
 	return r
 }
 
@@ -56,7 +72,6 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	fmt.Println(force)
 
 	err := s.doSync(force)
 	if err != nil {
@@ -69,45 +84,6 @@ func (s *Server) syncHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Success")
 }
 
-func (s *Server) dockerStackListHandler(w http.ResponseWriter, r *http.Request) {
-	stacks, err := docker.NewDockerStackCmd().Ls()
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error")
-		return
-	}
-	err = json.NewEncoder(w).Encode(stacks)
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error")
-		return
-	}
-	// w.WriteHeader(http.StatusOK)
-	// w.Header().Set("Content-Type", "application/json")
-}
-
-func (s *Server) dockerServiceListHandler(w http.ResponseWriter, r *http.Request) {
-	stackName := r.URL.Query().Get("stack")
-	stacks, err := docker.NewDockerStackCmd().Services(stackName)
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error")
-		return
-	}
-	err = json.NewEncoder(w).Encode(stacks)
-	if err != nil {
-		fmt.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error")
-		return
-	}
-	// w.WriteHeader(http.StatusOK)
-	// w.Header().Set("Content-Type", "application/json")
-}
-
 func (s *Server) BackgroundSync(syncInterval time.Duration, quit <-chan struct{}) {
 	ticker := time.NewTicker(syncInterval)
 	for {
@@ -115,7 +91,7 @@ func (s *Server) BackgroundSync(syncInterval time.Duration, quit <-chan struct{}
 		case <-ticker.C:
 			err := s.doSync(false)
 			if err != nil {
-				log.Infof("timed sync failed: %v", err)
+				log.Errorf("timed sync failed: %v", err)
 			}
 		case <-quit:
 			ticker.Stop()
@@ -125,9 +101,10 @@ func (s *Server) BackgroundSync(syncInterval time.Duration, quit <-chan struct{}
 }
 
 func (s *Server) doSync(force bool) error {
+	startTime := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	log.Infoln("Sync started")
+	log.Debug("Sync started")
 	outOfSync, err := s.git.Sync()
 	if err != nil {
 		return fmt.Errorf("gitSync: %w", err)
@@ -142,6 +119,7 @@ func (s *Server) doSync(force bool) error {
 			return fmt.Errorf("runDeploy: %w", err)
 		}
 	}
-	log.Infoln("Sync completed")
+	log.Debug("Sync completed")
+	reconcileDuration.WithLabelValues(strconv.FormatBool(force)).Observe(time.Since(startTime).Seconds())
 	return nil
 }

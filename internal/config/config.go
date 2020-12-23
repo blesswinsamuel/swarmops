@@ -68,7 +68,7 @@ func ParseConfig(repoDir, stackFile string) (*StackConfig, error) {
 			stack.ComposeFiles[i] = path.Join(repoDir, f)
 		}
 		stack.Environment["PWD"] = repoDir
-		fmt.Println(stack.Environment)
+		log.Debugf("Environment: %v", stack.Environment)
 	}
 	return &stackConfig, nil
 }

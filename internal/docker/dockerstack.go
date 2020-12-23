@@ -15,7 +15,7 @@ import (
 )
 
 func execDockerCommand(env map[string]string, args ...string) error {
-	log.Infof("Running docker %v", strings.Join(args, " "))
+	log.Debugf("Running docker %v", strings.Join(args, " "))
 	cmd := exec.Command("docker", args...)
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
@@ -34,7 +34,7 @@ func execDockerCommand(env map[string]string, args ...string) error {
 }
 
 func execDockerCommandCaptureOutput(env map[string]string, args ...string) ([]string, error) {
-	log.Infof("Running docker %v", strings.Join(args, " "))
+	log.Debugf("Running docker %v", strings.Join(args, " "))
 	cmd := exec.Command("docker", args...)
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))

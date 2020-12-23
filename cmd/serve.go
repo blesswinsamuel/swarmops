@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/blesswinsamuel/swarmops/internal/docker"
 	"github.com/blesswinsamuel/swarmops/internal/git"
 	"github.com/blesswinsamuel/swarmops/internal/server"
 	log "github.com/sirupsen/logrus"
@@ -67,6 +68,7 @@ func ServeExecute() error {
 	if c.syncInterval > 0 {
 		go server.BackgroundSync(c.syncInterval, quit)
 	}
+	go docker.UpdateDockerMetricsLoop(30*time.Second, quit)
 	h := server.HttpHandler()
 	s := &http.Server{Addr: ":" + c.port, Handler: h}
 

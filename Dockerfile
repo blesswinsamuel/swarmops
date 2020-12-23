@@ -15,17 +15,6 @@ COPY main.go .
 ENV CGO_ENABLED=0
 RUN go build -o swarmops
 
-# UI builder
-FROM node:14 AS ui-build-env
-
-WORKDIR /src
-
-COPY ./ui/package.json ./ui/yarn.lock ./
-RUN yarn install --frozen-lockfile
-
-COPY ./ui .
-RUN yarn build
-
 # final image
 FROM alpine
 
@@ -35,7 +24,6 @@ WORKDIR /app
 
 COPY known_hosts /etc/ssh/ssh_known_hosts
 COPY --from=build-env /src/swarmops /app/
-COPY --from=ui-build-env /src/dist /app/ui
 
 ENTRYPOINT ["/app/swarmops"]
 CMD ["serve"]
