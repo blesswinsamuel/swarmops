@@ -1,5 +1,5 @@
 # Go builder
-FROM golang:1.15-buster AS build-env
+FROM golang:1.17-buster AS build-env
 
 WORKDIR /src
 
